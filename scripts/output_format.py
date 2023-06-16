@@ -27,3 +27,6 @@ pre_sys = """
 4. Do not include patient's name and age in your responses.
 5. Ensure the JSON format is correct and exactly follows the structure provided.
 6. Consider only valid medicine names in the prescription. Ignore all non-medical related terms or fields."""
+
+
+medical_letter_sys = "Summarise the medical letter provided and return the response."

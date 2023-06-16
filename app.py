@@ -28,7 +28,7 @@ uploaded_file = st.file_uploader("Choose a PDF file or an Image", type=["pdf", "
 llm_options = ["OpenAI", "Anthropic", "VertexAI"]
 ai_role_options = ["You are a doctor", "You are an expert", "You are a pathologist", "You are a Pharmacist"]
 ai_job_options = ["extract useful information from", "Explain the given text", "Summarize the given text"]
-doc_type_options = ["Pathology Test Report", "Doctor Prescription", "Medical Insurance Premium Receipt"]
+doc_type_options = ["Pathology Test Report", "Doctor Prescription", "Medical Letter"]
 ai_restriction_options = [ai_restriction] # Please replace 'ai_restriction' with the actual values
 
 # Prompt user to select options for the arguments
@@ -41,7 +41,7 @@ ai_restriction = st.selectbox("AI Restriction", ai_restriction_options)
 # Create an instance of the TextractExtractor
 text_extractor = TextractExtractor()
 
-if st.button('Explain My Health Record'):
+if st.button('Upload and Process Health Record'):
     # Make sure the file has been uploaded and parameters selected before trying to extract data from it
     if uploaded_file is None:
         st.error('You must upload a file first.')
@@ -61,6 +61,28 @@ if st.button('Explain My Health Record'):
             pre_result = pre_extract(extracted_text[0])
             st.write('Drugs Details:')
             st.write(pre_result)
+
+        elif doc_type == "Medical Letter":
+            llm_extractor = LLMExtractor(selected_llm)
+
+            llm_extraction_result1 = llm_extractor.extract(
+                    ai_role=ai_role,
+                    ai_job=ai_job,
+                    doc_type=doc_type,
+                    output_format=medical_letter_sys,
+                    ai_restriction=ai_restriction,
+                    input_text=extracted_text[0]
+                )
+
+            st.write('Your Medical Letter Summary:')
+
+                # Parse the extracted response if it's in JSON format
+            parsed_response1 = llm_extraction_result1.parse_json()
+            st.write('Summary:')
+            st.write(parsed_response1)
+            # st.write(llm_extraction_result1)
+
+
 
         else:
 

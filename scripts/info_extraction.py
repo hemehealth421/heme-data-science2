@@ -112,4 +112,5 @@ class LLMExtractor:
         except json.JSONDecodeError as e:
             # Logging any JSON decoding errors
             logger.exception(f'Invalid JSON: {e}')
-            return {}
+            return {"Response":self.content}
+
