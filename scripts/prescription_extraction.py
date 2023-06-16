@@ -10,8 +10,8 @@ load_dotenv()
 anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
 anthropic_model = os.environ.get("ANTHROPIC_MODEL")
 
-openai_api_key = os.environ.get('OPEN_AI_API_KEY')
-openai_model = os.environ.get('OPEN_AI_MODEL')
+openai_api_key = os.environ.get('OPENAI_API_KEY')
+openai_model = os.environ.get('OPENAI_MODEL')
 
 openai.api_key = openai_api_key
 
