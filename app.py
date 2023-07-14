@@ -6,6 +6,8 @@ from scripts.info_extraction import LLMExtractor
 from scripts.prescription_extraction import pre_extract
 from scripts.vertexai_llm import *
 from scripts.output_format import *
+from scripts.patient_info import *
+
 
 ds_bucket_name = "attributes-extraction-heme"
 
@@ -13,127 +15,104 @@ def upload_file_to_s3(file, bucket_name):
     s3_client = boto3.client('s3')
     try:
         s3_client.upload_fileobj(file, bucket_name, file.name)
-        st.success('File uploaded successfully.')
+        st.success(f'**{file.name}**   -   File uploaded successfully.')
     except NoCredentialsError:
         st.error("AWS credentials not found.")
     except Exception as e:
         st.error(f"Error uploading file to S3: {str(e)}")
 
-# Streamlit app interface
-st.title('Explain My Health Records')
+st.title('🩺 Virtual Doctor')
 
-uploaded_file = st.file_uploader("Choose a PDF file or an Image", type=["pdf", "png", "jpg", "jpeg"])
+st.markdown("---")
+st.header('👤 Patient Demographics')
 
-# Define the options for the drop-downs
+# User Profile Input
+age = st.number_input('Enter your Age (Optional)', min_value=0, max_value=120, step=1, value=0)
+gender = st.selectbox('Select your Gender (Optional)', ['-', 'Male', 'Female', 'Other'])
+race_ethnicity = st.selectbox('Select your Race/Ethnicity (Optional)', ['-', 'African', 'Middle Eastern', 'Indian', 'Hispanic', 'Mediterranean', 'Caucasian', 'Northern European', 'African American', 'Native American', 'Asian American', 'Ashkenazi Jewish', 'Italian', 'Greek', 'Asian', 'Turkish', 'Other'])
+
+st.markdown("---")
+st.header('🌡️ Symptoms')
+
+# Symptoms
+symptoms = st.text_area('Enter your symptoms (Optional)', '')
+onset = st.text_input('Enter the onset of your symptoms (Optional)', '')
+duration = st.text_input('Enter the duration of your symptoms (Optional)', '')
+severity = st.text_input('Enter the severity of your symptoms (Optional)', '')
+associated_symptoms = st.text_area('Enter any associated symptoms (Optional)', '')
+
+st.markdown("---")
+st.header('📚 Medical and Family History')
+
+# Medical and Family History
+medical_history = st.text_area('Enter your medical history details (Optional)', '')
+prior_conditions = st.text_area('Enter your prior conditions (Optional)', '')
+surgeries = st.text_area('Enter any surgeries you have had (Optional)', '')
+medications = st.text_area('Enter any medications you are currently taking (Optional)', '')
+family_history = st.text_area('Enter your family medical history details (Optional)', '')
+
+st.markdown("---")
+st.header('🧑‍💼 Social History')
+
+# Social History
+occupation = st.text_input('Enter your occupation (Optional)', '')
+habits = st.text_area('Enter any habits (Optional)', '')
+exposures = st.text_area('Enter any significant exposures (Optional)', '')
+
+st.markdown("---")
+st.header('🔎 Physical Exam Findings')
+
+# Physical Examination
+physical_exam = st.text_area('Enter your physical examination details (Optional)', '')
+
+st.markdown("---")
+st.header('🔬 Diagnostic Tests')
+
+# Diagnostic Tests
+diagnostic_tests = st.text_area('Enter your diagnostic tests details (Optional)', '')
+labs = st.text_area('Enter your lab results (Optional)', '')
+imaging = st.text_area('Enter any imaging results (Optional)', '')
+pathology_reports = st.text_area('Enter any pathology reports (Optional)', '')
+
+st.markdown("---")
+st.header('📤 Upload Medical Documents')
+
+# File upload
+uploaded_files = st.file_uploader('Choose a file (Optional)', type=["pdf", "png", "jpg", "jpeg", "txt"], accept_multiple_files=True)
+
+st.markdown("---")
+st.header('🧠 Select Language Model')
+
 llm_options = ["OpenAI", "Anthropic", "VertexAI"]
-ai_role_options = ["You are a doctor", "You are an expert", "You are a pathologist", "You are a Pharmacist"]
-ai_job_options = ["extract useful information from", "Explain the given text", "Summarize the given text"]
-doc_type_options = ["Pathology Test Report", "Doctor Prescription", "Medical Letter"]
-ai_restriction_options = [ai_restriction] # Please replace 'ai_restriction' with the actual values
-
-# Prompt user to select options for the arguments
 selected_llm = st.selectbox("LLM choice", llm_options)
-ai_role = st.selectbox("AI Role", ai_role_options)
-ai_job = st.selectbox("AI Job", ai_job_options)
-doc_type = st.selectbox("Doc Type", doc_type_options)
-ai_restriction = st.selectbox("AI Restriction", ai_restriction_options)
 
 # Create an instance of the TextractExtractor
 text_extractor = TextractExtractor()
 
-if st.button('Upload and Process Health Record'):
-    # Make sure the file has been uploaded and parameters selected before trying to extract data from it
-    if uploaded_file is None:
-        st.error('You must upload a file first.')
+# Initialize the LLMExtractor
+llm_extractor = LLMExtractor(selected_llm)
+
+st.markdown("---")
+st.header('🔍 Get Differential Diagnosis')
+
+if st.button('Analyze'):
+    if uploaded_files is None and not symptoms:
+        st.error('Please enter symptoms or upload a file.')
     else:
-        # Upload the file to S3
-        upload_file_to_s3(uploaded_file, ds_bucket_name)
-
         progress_message = st.empty()
-        progress_message.text('Getting health details from your record...')
-        
-        # Use the extractor to get the text from the file
-        extracted_text = text_extractor.get_raw_text_list(ds_bucket_name, uploaded_file.name)
+        progress_message.text('Virtual consultation in progress...')
+        final_extracted_text = ""
+        for uploaded_file in uploaded_files:
+            # Upload the file to S3
+            upload_file_to_s3(uploaded_file, ds_bucket_name)
+            # Use the extractor to get the text from the file
+            extracted_text = text_extractor.get_raw_text_list(ds_bucket_name, uploaded_file.name)
+            final_extracted_text = f"{final_extracted_text} \n {extracted_text}" 
 
-        if doc_type == "Doctor Prescription":
-            progress_message = st.empty()
-            progress_message.text('Getting drug details...')
-            pre_result = pre_extract(extracted_text[0])
-            st.write('Drugs Details:')
-            st.write(pre_result)
+        patient_details = create_patient_details(age, gender, race_ethnicity, symptoms, onset, duration, severity, associated_symptoms, medical_history, prior_conditions, surgeries, medications, family_history, occupation, habits, exposures, physical_exam, diagnostic_tests, labs, imaging, pathology_reports, final_extracted_text)
+        # print(patient_details)
 
-        elif doc_type == "Medical Letter":
-            llm_extractor = LLMExtractor(selected_llm)
+        diagnosis = llm_extractor.differential_diagnosis(patient_details)
 
-            llm_extraction_result1 = llm_extractor.extract(
-                    ai_role=ai_role,
-                    ai_job=ai_job,
-                    doc_type=doc_type,
-                    output_format=medical_letter_sys,
-                    ai_restriction=ai_restriction,
-                    input_text=extracted_text[0]
-                )
-
-            st.write('Your Medical Letter Summary:')
-
-                # Parse the extracted response if it's in JSON format
-            parsed_response1 = llm_extraction_result1.parse_json()
-            st.write('Summary:')
-            st.write(parsed_response1)
-            # st.write(llm_extraction_result1)
-
-
-
-        else:
-
-            if selected_llm == "VertexAI":
-                
-                # If VertexAI was selected, call your VertexAI function
-                vertex_params = params_vertex_response(extracted_text[0])
-                st.write('Your Health Details')
-                st.write('Parameters:')
-                st.write(vertex_params)
-
-                progress_message = st.empty()
-                progress_message.text('Getting health analysis...')
-                vertex_analysis = analysis_vertex_response(vertex_params)
-
-                st.write('Health Analysis:')
-                st.write(vertex_analysis)
-
-            else:
-                # Initialize LLMExtractor based on the selected LLM
-                llm_extractor = LLMExtractor(selected_llm)
-
-                llm_extraction_result = llm_extractor.extract(
-                    ai_role=ai_role,
-                    ai_job=ai_job,
-                    doc_type=doc_type,
-                    output_format=PARAMETER_EXTRACTION_SYS,
-                    ai_restriction=ai_restriction,
-                    input_text=extracted_text[0]
-                )
-
-                st.write('Your Health Details')
-
-                # Parse the extracted response if it's in JSON format
-                parsed_response = llm_extraction_result.parse_json()
-                st.write('Parameters:')
-                st.write(parsed_response)
-
-                progress_message = st.empty()
-                progress_message.text('Getting health analysis...')
-
-                llm_assess_result = llm_extractor.extract(
-                    ai_role=ai_role,
-                    ai_job=ai_job,
-                    doc_type=doc_type,
-                    output_format=REPORTS_ASSESS_PROMPT,
-                    ai_restriction=ai_restriction,
-                    input_text=extracted_text[0]
-                )
-
-                # Parse the extracted response if it's in JSON format
-                parsed_assess_response = llm_assess_result.parse_json()
-                st.write('Health Analysis:')
-                st.write(parsed_assess_response)
+        # st.write('Differential Diagnosis:')
+        st.write(diagnosis)
