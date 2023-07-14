@@ -2,6 +2,34 @@ import vertexai
 from vertexai.preview.language_models import TextGenerationModel
 
 import json
+import os
+from scripts.output_format import *
+
+
+
+from langchain.chat_models import ChatVertexAI
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
+from langchain.schema import HumanMessage, SystemMessage
+
+
+from dotenv import load_dotenv
+load_dotenv()
+
+gcp_cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+vertex_model = os.environ.get("VERTEX_MODEL")
+
+
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+
 
 output_format1 = """extract all lab test parameters and their values and unit, Give a response in the JSON format considering these details:
 {"parameter name":"parameter value with unit"}"""
@@ -48,20 +76,38 @@ def vertex_ai_llm(
     
     return response.text
 
-def params_vertex_response(report_text):
-    prompt = f"{report_text}\n{output_format1}"
-    vertex_resonse = vertex_ai_llm("dev-heme-platform", "text-bison@001", 0.2, 1000, 0.8, 40,prompt, "us-central1")
-    parsed_response = parse_json(vertex_resonse)
-    return parsed_response
+def get_vertex_response(patient_details):
+    final_prompt = f"{virtual_doctor_system_prompt}\n{patient_details}"
+    vertex_resonse = vertex_ai_llm("dev-heme-platform", "text-bison@001", 0.2, 1000, 0.8, 40,final_prompt, "us-central1")
+    return vertex_resonse
 
-def analysis_vertex_response(params):
-    prompt = f"{params}\n{output_format2}"
-    vertex_resonse = vertex_ai_llm("dev-heme-platform", "text-bison@001", 0.2, 1000, 0.8, 40,prompt, "us-central1")
-    parsed_response = parse_json(vertex_resonse)
-    return parsed_response
 
-def get_vertex_response(report_text):
-    param_vertex_response = params_vertex_response(report_text)
-    vertex_response = params_vertex_response(param_vertex_response)
-    return vertex_response
+
+def get_vertex_ai_response(input_text):
+    """
+    Extract the response from the VertexAI LLM for the given chat prompt.
+    """
+    # Initialize the ChatVertexAI instance
+    chat_model = ChatVertexAI()
+    # Construct the system and human message prompts
+    template = virtual_doctor_system_prompt
+    system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+    human_template = input_text
+    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+
+    # Create a chat prompt from the message prompts
+    chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
+
+    # Send the chat prompt to the LLM and store the response
+    llm_res = chat_model(chat_prompt.format_prompt(system_message=system_message_prompt,
+                                                   human_message=human_message_prompt).to_messages())
+
+    # Log the content of the LLM response
+    content = llm_res.content
+    logger.debug(f'VertexAI LLM response content: {content}')
+    
+    return content
+
+
+
 

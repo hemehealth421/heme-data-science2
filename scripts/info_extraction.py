@@ -1,5 +1,10 @@
 import json
 
+from scripts.chat_gpt_llm import *
+from scripts.vertexai_llm import *
+from scripts.anthropic_llm import *
+
+
 
 from langchain.chat_models import ChatOpenAI
 from langchain.chat_models import ChatAnthropic
@@ -61,40 +66,33 @@ class LLMExtractor:
         self.llm_name = llm_name
         self.llm_chat = None
 
+        
+
+    def differential_diagnosis(self, prompt_text):
+
+        """
+        Extract the response from the LLM for the given chat prompt and ask for a differential diagnosis based on given symptoms and conditions.
+        """
         # Initializing LLM based on the given name
-        if llm_name == "OpenAI":
-            self.llm_chat = ChatOpenAI(temperature=0, openai_api_key=openai_api_key, model_name=openai_model)
-        elif llm_name == "Anthropic":
-            self.llm_chat = ChatAnthropic(temperature=0, anthropic_api_key=anthropic_api_key, model=anthropic_model)
+        if self.llm_name == "OpenAI":
+            self.llm_res = get_chatgpt_response(prompt_text)
+        elif self.llm_name == "Anthropic":
+            # self.llm_res = get_anthropic_response(prompt_text)
+            # self.llm_res = get_anthropic_response1(prompt_text)
+            self.llm_res = get_anthropic_completion(prompt_text)
+        elif self.llm_name == "VertexAI":
+            # self.llm_res = get_vertex_response(prompt_text)
+            self.llm_res = get_vertex_ai_response(prompt_text)
+        
         else:
-            logger.exception("Invalid LLM name. Please choose either 'OpenAI' or 'Anthropic'.")
-            raise ValueError("Invalid LLM name. Please choose either 'OpenAI' or 'Anthropic'.")
+            logger.exception("Invalid LLM name. Please choose either 'OpenAI' or 'Anthropic' or 'VertexAI'.")
+            raise ValueError("Invalid LLM name. Please choose either 'OpenAI' or 'Anthropic' or 'VertexAI'.")
 
-    def extract(self, ai_role, ai_job, doc_type, output_format, ai_restriction, input_text):
-        """
-        Extract the response from the LLM for the given chat prompt.
-        """
-        # Constructing the system and human message prompts
-        template = f"{ai_role} {ai_job} {doc_type} {output_format} {ai_restriction}"
-        system_message_prompt = SystemMessagePromptTemplate.from_template(template)
-        human_template = f"{input_text}"
-        human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
-
-        # Creating a chat prompt from the message prompts
-        chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
-        # print(chat_prompt)
-
-        # Sending the chat prompt to the LLM and storing the response
-        self.llm_res = self.llm_chat(chat_prompt.format_prompt(ai_role=ai_role,
-                                                               ai_job=ai_job,
-                                                               doc_type=doc_type,
-                                                               output_format=output_format,
-                                                               ai_restriction=ai_restriction,
-                                                               input_text=input_text).to_messages())
-        # Logging the content of the LLM response
-        self.content = self.llm_res.content
+        self.content = self.llm_res
         logger.debug(f'LLM {self.llm_name} response content: {self.content}')
-        return self
+
+        # Parsing the LLM response content
+        return self.content
 
     def parse_json(self):
         """
@@ -112,5 +110,5 @@ class LLMExtractor:
         except json.JSONDecodeError as e:
             # Logging any JSON decoding errors
             logger.exception(f'Invalid JSON: {e}')
-            return {"Response":self.content}
+            return {"Response": self.content}
 
