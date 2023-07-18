@@ -74,3 +74,8 @@ def create_patient_details(age, gender, race_ethnicity, symptoms, onset, duratio
     patient_details = f"patient_details: {patient_details}"
 
     return patient_details
+
+
+
+
+

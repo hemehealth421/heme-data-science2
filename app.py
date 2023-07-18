@@ -6,7 +6,10 @@ from scripts.info_extraction import LLMExtractor
 from scripts.prescription_extraction import pre_extract
 from scripts.vertexai_llm import *
 from scripts.output_format import *
-from scripts.patient_info import *
+from scripts.patient_info import create_patient_details
+from scripts.hemebot.chatbot import chat_completion_with_options
+from scripts.chat_gpt_llm import get_chatgpt_response1,get_key_insights
+
 
 
 ds_bucket_name = "attributes-extraction-heme"
@@ -95,6 +98,18 @@ llm_extractor = LLMExtractor(selected_llm)
 st.markdown("---")
 st.header('🔍 Get Differential Diagnosis')
 
+
+# Initialize chat history in the session state
+if 'chat_history' not in st.session_state: 
+    st.session_state['chat_history'] = []
+if 'user_input' not in st.session_state: 
+    st.session_state['user_input'] = ''
+
+
+patient_details = ""
+diagnosis = ""
+key_insights = ""
+
 if st.button('Analyze'):
     if uploaded_files is None and not symptoms:
         st.error('Please enter symptoms or upload a file.')
@@ -110,9 +125,51 @@ if st.button('Analyze'):
             final_extracted_text = f"{final_extracted_text} \n {extracted_text}" 
 
         patient_details = create_patient_details(age, gender, race_ethnicity, symptoms, onset, duration, severity, associated_symptoms, medical_history, prior_conditions, surgeries, medications, family_history, occupation, habits, exposures, physical_exam, diagnostic_tests, labs, imaging, pathology_reports, final_extracted_text)
-        # print(patient_details)
 
         diagnosis = llm_extractor.differential_diagnosis(patient_details)
 
-        # st.write('Differential Diagnosis:')
         st.write(diagnosis)
+
+
+        key_insights = get_key_insights(patient_details,diagnosis)
+        # st.write(key_insights)
+
+        st.session_state.chat_history.append(f"**Patient Health Details:** {key_insights}")
+
+
+
+# Hemebot
+st.markdown("---")
+st.title('🤖 HemeBot')
+
+
+# Create a placeholder for chat history
+history_placeholder = st.empty()
+
+
+# Input for user message
+user_message = st.text_input("You: ", value=st.session_state.user_input, key="user_input_widget")
+
+# Button to submit message
+if st.button('Send'):
+
+    # Add user message to chat history
+    st.session_state.chat_history.append(f"**You:** {user_message}")
+
+    # Join all messages in chat history and generate a response
+    history = "\n".join(st.session_state.chat_history)
+    bot_response = get_chatgpt_response1(history)
+
+    # Add bot response to chat history
+    st.session_state.chat_history.append(f"{bot_response}")
+
+    # Clear the input box after sending a message
+    st.session_state.user_input = ''
+
+# Display chat history in the placeholder
+if st.session_state['chat_history']:
+    for msg in st.session_state['chat_history']:
+        history_placeholder.markdown(msg)
+
+# Sync state and widget value
+st.session_state.user_input = user_message

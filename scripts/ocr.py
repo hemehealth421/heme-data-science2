@@ -130,11 +130,12 @@ class TextractExtractor:
             for i in pdf_report_text.values():
                 report_text_list.append(" ".join(i))
 
-            return report_text_list
+            return str(report_text_list)
         except Exception as error:
             logger.error(f"Textract failed to extract text")
             logger.exception("Error details:")
             return report_text_list
+
 
 
 
