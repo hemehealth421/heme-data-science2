@@ -7,7 +7,7 @@ from scripts.prescription_extraction import pre_extract
 from scripts.vertexai_llm import *
 from scripts.output_format import *
 from scripts.patient_info import create_patient_details
-from scripts.hemebot.chatbot import chat_completion_with_options
+# from scripts.hemebot.chatbot import chat_completion_with_options
 from scripts.chat_gpt_llm import hemebot_chatgpt_response, get_key_insights, hemebot_chatgpt_response1
 from streamlit_chat import message as smessage
 from scripts.hemebot.prompts import *
