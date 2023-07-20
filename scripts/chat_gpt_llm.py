@@ -2,7 +2,7 @@ import json
 import openai
 import os
 from scripts.output_format import *
-from scripts.hemebot.prompts import *
+# from scripts.hemebot.prompts import *
 import re 
 import ast
 
