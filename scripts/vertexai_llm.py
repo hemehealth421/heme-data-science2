@@ -77,7 +77,7 @@ def vertex_ai_llm(
     return response.text
 
 def get_vertex_response(patient_details):
-    final_prompt = f"{virtual_doctor_system_prompt}\n{patient_details}"
+    final_prompt = f"{VIRTUAL_DOCTOR_PROMPT}\n{patient_details}"
     vertex_resonse = vertex_ai_llm("dev-heme-platform", "text-bison@001", 0.2, 1000, 0.8, 40,final_prompt, "us-central1")
     return vertex_resonse
 
@@ -90,7 +90,7 @@ def get_vertex_ai_response(input_text):
     # Initialize the ChatVertexAI instance
     chat_model = ChatVertexAI()
     # Construct the system and human message prompts
-    template = virtual_doctor_system_prompt
+    template = VIRTUAL_DOCTOR_PROMPT
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
     human_template = input_text
     human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)

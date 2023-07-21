@@ -39,7 +39,7 @@ def parse_json(json_str):
 
 def get_chatgpt_response(pre_text):
     gpt4_res = openai.ChatCompletion.create(model="gpt-4",
-                                        messages=[{"role": "system", "content": virtual_doctor_system_prompt},
+                                        messages=[{"role": "system", "content": VIRTUAL_DOCTOR_PROMPT},
                                                   {"role": "user", "content": pre_text}],
                                         temperature=0)
 

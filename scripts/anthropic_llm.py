@@ -78,7 +78,7 @@ def get_anthropic_response1(patient_details):
     }
 
     payload = json.dumps({
-        "prompt": f"\n\nHuman: {virtual_doctor_system_prompt}\n{patient_details}\n\nAssistant:",
+        "prompt": f"\n\nHuman: {VIRTUAL_DOCTOR_PROMPT}\n{patient_details}\n\nAssistant:",
         "model": model,
         "max_tokens_to_sample": max_tokens_to_sample
     })
@@ -92,7 +92,7 @@ def get_anthropic_response1(patient_details):
 
 
 def get_anthropic_completion(patient_details, model="claude-2", max_tokens=300):
-    final_prompt = f"{virtual_doctor_system_prompt}\n{patient_details}"
+    final_prompt = f"{VIRTUAL_DOCTOR_PROMPT}\n{patient_details}"
     # Initialize Anthropic client
     anthropic = Anthropic(api_key=anthropic_api_key)
 
