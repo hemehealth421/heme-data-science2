@@ -39,7 +39,7 @@ if 'input_text' not in st.session_state:
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "system", "content": HEMEBOT_PROMPT},
+        {"role": "system", "content": HEMEBOT_PROMPT_new},
     ]
 
 # Function for the home page
