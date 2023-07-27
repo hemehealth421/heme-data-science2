@@ -67,6 +67,17 @@ def hemebot_chatgpt_response1(pre_text):
     # parsed_res = parse_json(response_text)
     return response_text
 
+
+def hemebot_chatgpt_response2(pre_text):
+    gpt4_res = openai.ChatCompletion.create(model="gpt-4",
+                                        messages=pre_text,
+                                        temperature=0)
+
+    # response_text = gpt4_res["choices"][0]["message"]["content"]
+    # parsed_res = parse_json(response_text)
+    return gpt4_res
+
+
 def remove_extra_newlines(text):
     lines = text.split('\n')
     cleaned_lines = [line for line in lines if line.strip() != '']
@@ -77,7 +88,7 @@ def remove_extra_newlines(text):
 def get_key_insights(patient_details, diagnosis):
 
     gpt4_res = openai.ChatCompletion.create(model="gpt-4",
-                                        messages=[{"role": "system", "content": KEY_INSIGHT_PROMPT},
+                                        messages=[{"role": "system", "content": KEY_INSIGHT_PROMPT_1},
                                                   {"role": "user", "content": patient_details}],
                                         temperature=0)
 
