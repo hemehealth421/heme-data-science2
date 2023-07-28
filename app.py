@@ -2,14 +2,14 @@ import streamlit as st
 from streamlit_chat import message as smessage
 import boto3
 from botocore.exceptions import NoCredentialsError
-from scripts.ocr import TextractExtractor
+from scripts.ocr import TextractExtractor,PDFMinerExtractor
 from scripts.info_extraction import LLMExtractor
 from scripts.vertexai_llm import *
 from scripts.output_format import *
 from scripts.patient_info import create_patient_details
 from scripts.chat_gpt_llm import hemebot_chatgpt_response, get_key_insights, hemebot_chatgpt_response1
 # from scripts.hemebot_prompts import *
-from scripts.chat_gpt_llm import hemebot_chatgpt_response2
+from scripts.chat_gpt_llm import hemebot_chatgpt_response2,hemebot_chatgpt_response3
 
 
 ds_bucket_name = "attributes-extraction-heme"
@@ -91,13 +91,12 @@ def diagnostic_tests_section():
     return diagnostic_tests_data
 
 def doctors_note_section():
-    st.subheader('📋 Doctors Note')
+    doctor_input = st.text_input('Add Doctors Note (Optional)', value=st.session_state.doctors_note)
+    st.session_state.doctors_note = doctor_input  # Save the value to st.session_state
 
-    doctors_note = ""
-    doctors_note = st.text_input('Add Doctors Note (Optional)', '')
+    doctor_input = f"Doctor Note: {doctor_input}"
+    return doctor_input
 
-    doctors_note = f"Doctor Note: {doctors_note}"
-    return doctors_note
 
 
 
@@ -107,7 +106,7 @@ def upload_documents_section(uploaded_files):
         return ""
 
     text_extractor = TextractExtractor()
-    documents_text = dict()
+    pdfminer_extractor = PDFMinerExtractor()
 
     final_extracted_text = ""
 
@@ -118,16 +117,22 @@ def upload_documents_section(uploaded_files):
         try:
             # Feedback: Showing which file is being uploaded
             with st.spinner(f"📤 Uploading **{uploaded_file.name}**"):
-
-
                 upload_file_to_s3(uploaded_file, ds_bucket_name)
 
             # Provide feedback that file uploaded successfully
-            st.success(f'Successfully uploaded  **{uploaded_file.name}**')
+            st.success(f'Successfully uploaded **{uploaded_file.name}**')
 
-            # Feedback: Indicate extracting text now
+            # Extracting text based on file type
             with st.spinner(f"📄 Extracting information from **{uploaded_file.name}**"):
-                extracted_text = text_extractor.get_raw_text_list(ds_bucket_name, uploaded_file.name)
+                extracted_text = ""  # Initialize with None
+                
+                if uploaded_file.name.lower().endswith('.pdf'):
+                    extracted_text = pdfminer_extractor.extract_text(ds_bucket_name, uploaded_file.name)
+
+                # Use text_extractor if file is not PDF or if no text is extracted from PDF
+                if not extracted_text:
+                    extracted_text = text_extractor.get_raw_text_list(ds_bucket_name, uploaded_file.name)
+
                 final_extracted_text += f"\n{extracted_text}"
 
             # Provide individual feedback for each file's text extraction
@@ -141,11 +146,11 @@ def upload_documents_section(uploaded_files):
             # Always update the progress bar, whether there was an error or not
             progress_bar.progress((index + 1) / len(uploaded_files))
 
-
     if not final_extracted_text:
         st.warning('No text was extracted. Please check the uploaded files.')
 
     return final_extracted_text
+
 
 
 
@@ -178,6 +183,8 @@ if "messages" not in st.session_state:
     ]
 
 
+if "doctors_note" not in st.session_state:
+    st.session_state.doctors_note = ''
 
 
 # Main page layout and logic
@@ -210,12 +217,12 @@ def home_page():
     st.header('⚙️ Process Health Details')
 
 
-    if st.button('Process'):
+    if st.button('🔄 Process'):
 
         uploaded_documents = upload_documents_section(uploaded_files)
         patient_details = f"{cleaned_data}\n{uploaded_documents}"
 
-        with st.spinner('**🩺 Virtual consultation in progress...**'):
+        with st.spinner('**🩺 AI consultation in progress...**'):
             llm_extractor = LLMExtractor(language_model)
             diagnosis = llm_extractor.differential_diagnosis(patient_details)
             st.write(diagnosis)
@@ -223,7 +230,9 @@ def home_page():
         st.markdown("---")
 
         with st.spinner('**📡 Sending details to hemebot...**'):
-            key_insights = get_key_insights(patient_details, diagnosis)
+            response_text = get_key_insights(patient_details)
+            key_insights = f"{response_text}\n\n{diagnosis}"
+
             st.session_state.messages.append({"role": "user", "content": key_insights})
             st.chat_message("user").write(key_insights)
 
@@ -252,23 +261,14 @@ def chat_page():
     st.title('🤖 HemeBot')  # This will ensure title remains at the top
     st.markdown("---")
 
-    # st.subheader('📜 Choose a HemeBot Prompt')
-    # prompt_keys = prompt_keys_list
-    # chosen_prompt = st.selectbox("Prompt choice", prompt_keys)
-    # st.markdown("---")
-
-    # st.session_state.messages.append({"role": "system", "content": chosen_prompt})
-
     # Display chat history before the input box
     # Display chat history
     for msg in st.session_state.messages:
         if msg["role"] != "system":  # Only display non-system messages
             st.chat_message(msg["role"]).write(msg["content"])
 
-
     # User chat input
     user_input = st.chat_input()
-
 
     if user_input:
         with st.spinner('🤖 Bot is typing...'):
@@ -285,21 +285,34 @@ def chat_page():
         # Add the bot's response to the messages list and display it
         st.session_state.messages.append(msg)
         st.chat_message("assistant").write(msg.content)
+    
+   # Sidebar for Doctor's note and 'Process' button
+    st.sidebar.header('Doctor Note')
+    doctor_input = st.sidebar.text_input('Add Doctors Note (Optional)')
 
-    # final_doctors_note = str(doctors_note_section())
-    # st.session_state.messages.append({"role": "user", "content": final_doctors_note})
-    # if final_doctors_note:
-    #     st.chat_message("user").write(final_doctors_note)
+    if st.sidebar.button('🔄 Process'):
+        data_to_process = f"{st.session_state.messages}\n\n{doctor_input}"
+
+        # if doctor_input:
+        processing_text = st.sidebar.text('⚙️ Processing...')
+        response = hemebot_chatgpt_response3(data_to_process)
+        summary = get_key_insights(data_to_process)
+        processing_text.empty()  # This removes the "Processing" text
+        st.sidebar.subheader("AI Response💡")
+        st.sidebar.write(f"{summary}\n\n🧠 : {response}")
 
 
 
 
-    # if st.button('Back to Analysis'):
-    #     st.session_state.page = "home"
+
+
+
 
 # Main page rendering based on session state
 if st.session_state.page == "home":
     home_page()
 elif st.session_state.page == "chat":
     chat_page()
+# elif st.session_state.page == "doctor_chat":
+#     doctor_chat()
 

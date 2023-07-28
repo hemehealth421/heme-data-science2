@@ -2,7 +2,6 @@ import json
 import openai
 import os
 from scripts.output_format import *
-# from scripts.hemebot.prompts import *
 import re 
 import ast
 
@@ -38,14 +37,19 @@ def parse_json(json_str):
 
 
 def get_chatgpt_response(pre_text):
-    gpt4_res = openai.ChatCompletion.create(model="gpt-4",
+    try:
+        gpt4_res = openai.ChatCompletion.create(model="gpt-4",
                                         messages=[{"role": "system", "content": VIRTUAL_DOCTOR_PROMPT},
                                                   {"role": "user", "content": pre_text}],
                                         temperature=0)
 
-    response_text = gpt4_res["choices"][0]["message"]["content"]
-    # parsed_res = parse_json(response_text)
-    return response_text
+        response_text = gpt4_res["choices"][0]["message"]["content"]
+
+        return response_text
+
+    except Exception as e:
+        print("Error during OpenAI API call:", e)
+
 
 
 def hemebot_chatgpt_response(pre_text):
@@ -58,6 +62,7 @@ def hemebot_chatgpt_response(pre_text):
     # parsed_res = parse_json(response_text)
     return response_text
 
+
 def hemebot_chatgpt_response1(pre_text):
     gpt4_res = openai.ChatCompletion.create(model="gpt-4",
                                         messages=pre_text,
@@ -66,7 +71,6 @@ def hemebot_chatgpt_response1(pre_text):
     response_text = gpt4_res["choices"][0]["message"]["content"]
     # parsed_res = parse_json(response_text)
     return response_text
-
 
 def hemebot_chatgpt_response2(pre_text):
     gpt4_res = openai.ChatCompletion.create(model="gpt-4",
@@ -77,6 +81,14 @@ def hemebot_chatgpt_response2(pre_text):
     # parsed_res = parse_json(response_text)
     return gpt4_res
 
+def hemebot_chatgpt_response3(pre_text):
+    gpt4_res = openai.ChatCompletion.create(model="gpt-4",
+                                        messages=[{"role": "system", "content": DOCTOR_CHAT_PROMPT},
+                                                  {"role": "user", "content": pre_text}],
+                                        temperature=0)
+    response_text = gpt4_res["choices"][0]["message"]["content"]
+
+    return response_text
 
 def remove_extra_newlines(text):
     lines = text.split('\n')
@@ -85,7 +97,7 @@ def remove_extra_newlines(text):
 
 
 
-def get_key_insights(patient_details, diagnosis):
+def get_key_insights(patient_details):
 
     gpt4_res = openai.ChatCompletion.create(model="gpt-4",
                                         messages=[{"role": "system", "content": KEY_INSIGHT_PROMPT_1},
@@ -93,11 +105,20 @@ def get_key_insights(patient_details, diagnosis):
                                         temperature=0)
 
     response_text = gpt4_res["choices"][0]["message"]["content"]
-    key_insights = f"{response_text}\n\n{diagnosis}"
-    cleaned_text = remove_extra_newlines(key_insights)
+    
+    cleaned_text = remove_extra_newlines(response_text)
 
-    return key_insights
+    return response_text
 
+
+def insure_tech_chatgpt_response(pre_text,PROMPT):
+    gpt4_res = openai.ChatCompletion.create(model="gpt-4",
+                                        messages=[{"role": "system", "content": PROMPT},
+                                                  {"role": "user", "content": pre_text}],
+                                        temperature=0)
+
+    response_text = gpt4_res["choices"][0]["message"]["content"]
+    return response_text
 
 
 
