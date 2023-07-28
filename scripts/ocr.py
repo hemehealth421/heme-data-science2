@@ -4,6 +4,13 @@ import os
 import time
 from botocore.exceptions import BotoCoreError, ClientError
 
+from pdfminer.converter import TextConverter
+from pdfminer.layout import LAParams
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from io import BytesIO, StringIO
+
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -135,6 +142,58 @@ class TextractExtractor:
             logger.error(f"Textract failed to extract text")
             logger.exception("Error details:")
             return report_text_list
+
+
+
+
+
+
+class PDFMinerExtractor:
+    def __init__(self):
+
+        aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+        aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+        aws_default_region = os.getenv('AWS_DEFAULT_REGION')
+
+
+
+        self.s3 = boto3.resource(service_name='s3',
+                                 region_name=aws_default_region,
+                                 aws_access_key_id=aws_access_key_id,
+                                 aws_secret_access_key=aws_secret_access_key)
+
+    def extract_text(self, s3_bucket_name, document_name):
+        bucket = self.s3.Bucket(s3_bucket_name)
+        obj = bucket.Object(document_name)
+
+        # Create a file-like object
+        stream = BytesIO()
+
+        # Download the file into the stream object
+        obj.download_fileobj(stream)
+
+        # Set the pointer of the stream at the beginning of the file
+        stream.seek(0)
+
+        # PDFMiner resources and configuration
+        resource_manager = PDFResourceManager()
+        laparams = LAParams()
+
+        # List to store each page's text
+        pages_text = []
+
+        for page in PDFPage.get_pages(stream):
+            output_string = StringIO()
+            device = TextConverter(resource_manager, output_string, laparams=laparams)
+            interpreter = PDFPageInterpreter(resource_manager, device)
+            interpreter.process_page(page)
+            text = output_string.getvalue()
+            new_text = text.replace('\n', ' ')
+            pages_text.append(new_text)
+
+        return str(pages_text)
+
+
 
 
 
